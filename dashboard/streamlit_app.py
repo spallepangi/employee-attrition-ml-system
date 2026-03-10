@@ -59,8 +59,8 @@ def load_sample_employee():
 tab1, tab2, tab3, tab4 = st.tabs([
     "Single prediction",
     "Feature importance",
-    "Employee risk scoring",
-    "SHAP explanations",
+    "Who might leave?",
+    "Why the model thinks so",
 ])
 
 with tab1:
@@ -151,34 +151,65 @@ with tab2:
         st.warning(str(e))
 
 with tab3:
-    st.header("Employee risk scoring")
-    st.markdown("Score multiple employees from the dataset by attrition probability.")
+    st.header("Who might leave?")
+    st.markdown(
+        "See which employees are **most likely to leave** so you can prioritize retention efforts. "
+        "Risk is shown as **Low**, **Medium**, or **High** based on the model’s prediction."
+    )
     _artifacts = load_model_artifacts()
     model, preprocessor, _ = (_artifacts if _artifacts else (None, None, None))
     if model is not None:
-        n_sample = st.slider("Number of employees to score", 10, 200, 50)
+        n_sample = st.slider("How many employees to review?", 10, 200, 50, help="More people = longer load time.")
         df = load_raw_data(project_root=PROJECT_ROOT)
         target_col = load_config()["project"]["target_column"]
-        y_true = df[target_col]
         df = apply_feature_engineering(df).drop(columns=[target_col])
         df = df.head(n_sample)
         preds, proba = predict(df, model, preprocessor, return_proba=True)
         proba = proba if proba is not None else preds.astype(float)
-        df["attrition_probability"] = proba
-        df["prediction"] = preds
-        st.dataframe(df[["attrition_probability", "prediction"]].head(20))
-        st.bar_chart(df["attrition_probability"])
+        # Risk bands for executives (interpretable)
+        def risk_band(p):
+            if p < 0.25:
+                return "Low"
+            if p < 0.50:
+                return "Medium"
+            return "High"
+        df["Likelihood to leave"] = [f"{p:.0%}" for p in proba]
+        df["Risk level"] = [risk_band(p) for p in proba]
+        df["Outlook"] = ["At risk — consider outreach" if pr == 1 else "Likely to stay" for pr in preds]
+        # Summary metrics
+        high_risk = sum(1 for p in proba if risk_band(p) == "High")
+        medium_risk = sum(1 for p in proba if risk_band(p) == "Medium")
+        low_risk = sum(1 for p in proba if risk_band(p) == "Low")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("High risk (consider action)", f"{high_risk} employees", help="Likelihood to leave ≥ 50%")
+        c2.metric("Medium risk (monitor)", f"{medium_risk} employees", help="Likelihood 25–50%")
+        c3.metric("Low risk (likely to stay)", f"{low_risk} employees", help="Likelihood < 25%")
+        st.markdown("#### Employee list (by risk)")
+        display_df = df[["Risk level", "Likelihood to leave", "Outlook"]].head(25)
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        st.markdown("#### How risk is distributed")
+        risk_counts = df["Risk level"].value_counts().reindex(["Low", "Medium", "High"], fill_value=0)
+        st.bar_chart(risk_counts)
     else:
         st.info("Load model first (see Single prediction tab).")
 
 with tab4:
-    st.header("SHAP explanations")
+    st.header("Why the model thinks so")
+    st.markdown(
+        "This view shows **which factors** drive the model’s predictions. "
+        "Features higher on the chart have more impact on whether someone is predicted to leave."
+    )
     try:
         model_dir = PROJECT_ROOT / "models" / "shap_plots"
         summary_path = model_dir / "shap_summary.png"
         if summary_path.exists():
-            st.image(str(summary_path), use_container_width=True)
+            st.image(
+                str(summary_path),
+                use_container_width=True,
+                caption="Feature impact on attrition prediction (red = pushes toward leave, blue = pushes toward stay)",
+            )
+            st.caption("Re-run the training pipeline to regenerate this plot with different settings.")
         else:
-            st.info("Run the training pipeline with SHAP enabled to generate SHAP summary plot.")
+            st.info("Run the training pipeline with SHAP enabled to generate this explanation plot.")
     except Exception as e:
         st.warning(str(e))

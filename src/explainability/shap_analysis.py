@@ -54,11 +54,13 @@ def compute_shap_values(
     """
     Compute SHAP values for X. For binary classification returns values for positive class.
     """
-    shap_values = explainer(X)
-    if isinstance(shap_values, list):
-        # Multi-output: use positive class (index 1)
-        shap_values = shap_values[1]
-    return np.array(shap_values)
+    raw = explainer(X)
+    if isinstance(raw, list):
+        raw = raw[1]  # positive class
+    # KernelExplainer returns Explanation; extract .values for numpy
+    if hasattr(raw, "values"):
+        return np.array(raw.values)
+    return np.array(raw)
 
 
 def plot_summary(
@@ -68,7 +70,7 @@ def plot_summary(
     save_path: Optional[Union[str, Path]] = None,
     max_display: int = 20,
 ) -> None:
-    """Generate SHAP summary plot (beeswarm)."""
+    """Generate SHAP summary plot (beeswarm). Saves with layout that fits dashboards."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt_fig
@@ -79,10 +81,11 @@ def plot_summary(
         show=False,
         max_display=max_display,
     )
+    plt_fig.tight_layout(pad=1.2)
     if save_path:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        plt_fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        plt_fig.savefig(save_path, dpi=120, bbox_inches="tight", pad_inches=0.4)
         plt_fig.close()
         logger.info("Saved SHAP summary plot to %s", save_path)
 

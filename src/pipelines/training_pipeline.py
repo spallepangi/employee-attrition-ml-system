@@ -136,17 +136,20 @@ def run_training_pipeline(
         output_dir=project_root / "models" / "eval_plots",
     )
 
-    # 7b. SHAP explainability (optional)
+    # 7b. SHAP explainability (optional; non-fatal)
     if run_shap:
-        logger.info("Step 6b: SHAP analysis")
-        run_shap_analysis(
-            best_model,
-            X_train_t,
-            X_explain=X_test_t,
-            feature_names=feature_names,
-            output_dir=project_root / "models" / "shap_plots",
-            top_dependence=3,
-        )
+        try:
+            logger.info("Step 6b: SHAP analysis")
+            run_shap_analysis(
+                best_model,
+                X_train_t,
+                X_explain=X_test_t,
+                feature_names=feature_names,
+                output_dir=project_root / "models" / "shap_plots",
+                top_dependence=3,
+            )
+        except Exception as e:
+            logger.warning("SHAP analysis skipped: %s", e)
 
     # 8. Save artifacts
     logger.info("Step 7: Saving artifacts")
