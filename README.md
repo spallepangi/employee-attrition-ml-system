@@ -158,3 +158,7 @@ Edit `src/config/config.yaml` for:
 ## License
 
 Use as needed for the project.
+
+---
+
+**Repository:** [github.com/spallepangi/employee-attrition-ml-system](https://github.com/spallepangi/employee-attrition-ml-system)
