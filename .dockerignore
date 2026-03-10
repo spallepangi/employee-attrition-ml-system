@@ -1,0 +1,15 @@
+# Don't copy these into the Docker image
+venv/
+mlruns/
+.git/
+__pycache__/
+*.pyc
+.ipynb_checkpoints
+.DS_Store
+*.csv
+notebooks/
+dashboard/
+tests/
+.pytest_cache/
+*.egg-info/
+.eggs/

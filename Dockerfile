@@ -21,7 +21,7 @@ COPY src/ ./src/
 COPY api/ ./api/
 COPY models/ ./models/
 
-# Ensure models directory exists (can be mounted at runtime)
+# Ensure models directory exists (copy trained model in or mount at runtime)
 RUN mkdir -p /app/models
 
 # Expose API port
