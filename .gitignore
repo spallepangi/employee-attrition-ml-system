@@ -1,0 +1,24 @@
+# Virtual environment
+venv/
+
+# MLflow
+mlruns/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints
+
+# OS
+.DS_Store
+
+# Data (large/raw files)
+data/raw/*.csv
+data/processed/*.csv
+
+# Trained models (binary artifacts)
+models/*.pkl
+models/*.joblib

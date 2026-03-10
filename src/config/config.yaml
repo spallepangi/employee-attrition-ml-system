@@ -1,0 +1,115 @@
+# Employee Attrition Prediction System - Configuration
+# All paths are relative to project root unless otherwise noted.
+
+project:
+  name: "Employee Attrition Prediction System"
+  target_column: "Attrition"
+  target_mapping:
+    "Yes": 1
+    "No": 0
+
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  raw_filename: "WA_Fn-UseC_-HR-Employee-Attrition.csv"
+  test_size: 0.2
+  random_state: 42
+  # Columns to drop (identifiers, constants, or unused for model)
+  drop_columns:
+    - EmployeeNumber
+    - EmployeeCount
+    - Over18
+    - StandardHours
+    - EducationField
+    - MaritalStatus
+    - MonthlyRate
+    - HourlyRate
+    - RelationshipSatisfaction
+  # Optional extra columns in dataset not used in model (can keep for EDA)
+  categorical_features:
+    - BusinessTravel
+    - Department
+    - Gender
+    - JobRole
+    - OverTime
+  numerical_features:
+    - Age
+    - DailyRate
+    - DistanceFromHome
+    - Education
+    - EnvironmentSatisfaction
+    - JobInvolvement
+    - JobLevel
+    - JobSatisfaction
+    - MonthlyIncome
+    - NumCompaniesWorked
+    - PercentSalaryHike
+    - PerformanceRating
+    - StockOptionLevel
+    - TotalWorkingYears
+    - TrainingTimesLastYear
+    - WorkLifeBalance
+    - YearsAtCompany
+    - YearsInCurrentRole
+    - YearsSinceLastPromotion
+    - YearsWithCurrManager
+  # Engineered (added by feature_engineering.py; include in numerical for preprocessing)
+  engineered_features:
+    - income_per_year_of_experience
+    - tenure_ratio
+    - promotion_gap
+
+preprocessing:
+  numerical_imputer: "median"
+  categorical_imputer: "most_frequent"
+  scaler: "StandardScaler"
+  encoder: "OneHotEncoder"
+  handle_unknown: "ignore"
+
+feature_engineering:
+  # Engineered feature definitions (used in feature_engineering.py)
+  income_per_year: true
+  tenure_ratio: true
+  promotion_gap: true
+
+training:
+  cv_folds: 5
+  scoring: "roc_auc"
+  random_state: 42
+  stratified: true
+
+models:
+  logistic_regression:
+    C: 1.0
+    max_iter: 1000
+    random_state: 42
+  random_forest:
+    n_estimators: 100
+    max_depth: 10
+    random_state: 42
+  xgboost:
+    n_estimators: 100
+    max_depth: 6
+    learning_rate: 0.1
+    random_state: 42
+    use_label_encoder: false
+    eval_metric: "logloss"
+
+optuna:
+  n_trials: 50
+  timeout: 300
+  study_name: "xgboost_attrition"
+
+mlflow:
+  tracking_uri: "mlruns"
+  experiment_name: "employee_attrition"
+
+paths:
+  model_dir: "models"
+  best_model_filename: "best_model.pkl"
+  preprocessor_filename: "preprocessor.pkl"
+  feature_names_filename: "feature_names.json"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
