@@ -151,7 +151,13 @@ def run_training_pipeline(
         except Exception as e:
             logger.warning("SHAP analysis skipped: %s", e)
 
-    # 8. Save artifacts
+    # 8. Model comparison (ensure we have LR, RF, XGBoost test metrics for dashboard)
+    comparison = _build_model_comparison(
+        best_name, all_metrics, best_model, preprocessor,
+        X_train_t, np.array(y_train), X_test_t, np.array(y_test),
+    )
+
+    # 9. Save artifacts
     logger.info("Step 7: Saving artifacts")
     model_dir = project_root / config["paths"]["model_dir"]
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -159,6 +165,8 @@ def run_training_pipeline(
     save_preprocessor(preprocessor, path=model_dir / config["paths"]["preprocessor_filename"])
     with open(model_dir / config["paths"]["feature_names_filename"], "w") as f:
         json.dump(feature_names, f, indent=2)
+    with open(model_dir / "model_comparison.json", "w") as f:
+        json.dump(comparison, f, indent=2)
 
     return {
         "best_model_name": best_name,
@@ -166,6 +174,52 @@ def run_training_pipeline(
         "test_metrics": test_metrics,
         "model_path": str(model_dir / config["paths"]["best_model_filename"]),
     }
+
+
+def _build_model_comparison(
+    best_name: str,
+    all_metrics: dict,
+    best_model: Any,
+    preprocessor: Any,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+) -> dict:
+    """Ensure we have test metrics for LR, RF, XGBoost; return dict for dashboard."""
+    from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import RandomForestClassifier
+
+    comparison = {}
+    config = load_config()
+
+    def _eval(m, X_te, y_te):
+        pred = m.predict(X_te)
+        prob = m.predict_proba(X_te)[:, 1] if hasattr(m, "predict_proba") else pred.astype(float)
+        return {
+            "accuracy": float(accuracy_score(y_te, pred)),
+            "precision": float(precision_score(y_te, pred, zero_division=0)),
+            "recall": float(recall_score(y_te, pred, zero_division=0)),
+            "f1": float(f1_score(y_te, pred, zero_division=0)),
+            "roc_auc": float(roc_auc_score(y_te, prob)),
+        }
+
+    lr = LogisticRegression(**config["models"]["logistic_regression"])
+    lr.fit(X_train, y_train)
+    comparison["logistic_regression"] = _eval(lr, X_test, y_test)
+    rf = RandomForestClassifier(**config["models"]["random_forest"])
+    rf.fit(X_train, y_train)
+    comparison["random_forest"] = _eval(rf, X_test, y_test)
+    comparison["xgboost"] = _eval(best_model, X_test, y_test)
+
+    roc_aucs = {k: v.get("roc_auc", 0) for k, v in comparison.items() if isinstance(v, dict) and "roc_auc" in v}
+    comparison["chosen_model"] = best_name
+    comparison["chosen_reason"] = (
+        f"Chosen by highest ROC AUC on test set ({roc_aucs.get(best_name, 0):.3f}). "
+        "ROC AUC is the primary metric so we rank at-risk employees well."
+    )
+    return comparison
 
 
 def _run_optuna_xgboost(

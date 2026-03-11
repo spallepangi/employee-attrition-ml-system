@@ -152,20 +152,24 @@ def get_feature_importance(
 def plot_feature_importance(
     importance_dict: Dict[str, float],
     save_path: Optional[Path] = None,
-    top_n: int = 20,
+    top_n: int = 30,
     title: str = "Feature Importance",
 ) -> None:
-    """Plot horizontal bar chart of feature importance."""
+    """Plot horizontal bar chart: most important at top, bars extend right (many features visible)."""
     if not importance_dict:
         logger.warning("No feature importance to plot.")
         return
     sorted_items = sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)[:top_n]
     names = [x[0] for x in sorted_items]
     values = [x[1] for x in sorted_items]
-    fig, ax = plt.subplots(figsize=(8, max(6, len(names) * 0.25)))
-    ax.barh(range(len(names)), values, align="center")
-    ax.set_yticks(range(len(names)))
-    ax.set_yticklabels(names, fontsize=8)
+    n = len(names)
+    # Tall figure so all feature names visible; horizontal bars (value on x-axis)
+    fig, ax = plt.subplots(figsize=(9, max(10, n * 0.45)))
+    y_pos = np.arange(n)
+    ax.barh(y_pos, values, align="center", height=0.7)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(names, fontsize=9)
+    # Most important at top (index 0 at top)
     ax.invert_yaxis()
     ax.set_xlabel("Importance")
     ax.set_title(title)
